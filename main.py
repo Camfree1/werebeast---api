@@ -1,11 +1,51 @@
-from fastapi import FastAPI
+from flask import Flask, request, jsonify
 
-app = FastAPI()
+app = Flask(__name__)
 
-@app.get("/")
+# ----------------------------
+# HEALTH CHECK (Render uses this)
+# ----------------------------
+@app.route("/")
 def home():
-    return {"message": "server is working"}
-from pydantic import BaseModel
-class VideoRequest(BaseModel):    prompt: str
-@app.post("/generate-video")def generate_video(request: VideoRequest):    print("Received prompt:", request.prompt)
-    return {        "success": True,        "message": "Route is working",        "promptReceived": request.prompt    }
+    return "server is working"
+
+# ----------------------------
+# BUBBLE TEST ROUTE
+# ----------------------------
+@app.route("/generate-video", methods=["POST"])
+def generate_video():
+    try:
+        data = request.get_json()
+
+        # safety in case Bubble sends nothing
+        if not data:
+            return jsonify({
+                "success": False,
+                "error": "No JSON received"
+            }), 400
+
+        prompt = data.get("prompt", "")
+
+        print("PROMPT RECEIVED:", prompt)
+
+        # TEMP RESPONSE (we connect Veo3 later)
+        return jsonify({
+            "success": True,
+            "message": "Route is working",
+            "promptReceived": prompt
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+# ----------------------------
+# REQUIRED FOR RENDER DEPLOY
+# ----------------------------
+if __name__ == "__main__":
+    import os
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
