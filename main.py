@@ -1,51 +1,44 @@
-from flask import Flask, request, jsonify
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import json
+import os
 
-app = Flask(__name__)
+class handler(BaseHTTPRequestHandler):
 
-# ----------------------------
-# HEALTH CHECK (Render uses this)
-# ----------------------------
-@app.route("/")
-def home():
-    return "server is working"
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
 
-# ----------------------------
-# BUBBLE TEST ROUTE
-# ----------------------------
-@app.route("/generate-video", methods=["POST"])
-def generate_video():
-    try:
-        data = request.get_json()
+        response = {
+            "status": "server is working"
+        }
 
-        # safety in case Bubble sends nothing
-        if not data:
-            return jsonify({
-                "success": False,
-                "error": "No JSON received"
-            }), 400
+        self.wfile.write(json.dumps(response).encode())
 
-        prompt = data.get("prompt", "")
+    def do_POST(self):
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length)
 
-        print("PROMPT RECEIVED:", prompt)
+        try:
+            data = json.loads(post_data)
+        except:
+            data = {}
 
-        # TEMP RESPONSE (we connect Veo3 later)
-        return jsonify({
+        response = {
             "success": True,
-            "message": "Route is working",
-            "promptReceived": prompt
-        })
+            "message": "route working",
+            "received": data
+        }
 
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+
+        self.wfile.write(json.dumps(response).encode())
 
 
-# ----------------------------
-# REQUIRED FOR RENDER DEPLOY
-# ----------------------------
 if __name__ == "__main__":
-    import os
     port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    server = HTTPServer(('0.0.0.0', port), handler)
+    print("Server running on port", port)
+    server.serve_forever()
